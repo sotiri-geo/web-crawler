@@ -1,9 +1,12 @@
 package requests
 
 import (
+	"errors"
 	"io"
 	"net/http"
 )
+
+var ErrPageNotFound = errors.New("could not find page")
 
 // First build out a httpClient interface we can use as a dependency injection
 // should mimic the interface found on http.Client
@@ -22,6 +25,9 @@ type Page struct {
 
 func (u *URLFetch) FetchURL(url string) (*Page, error) {
 	response, _ := u.client.Get(url)
+	if response.StatusCode == http.StatusNotFound {
+		return &Page{Content: "", StatusCode: response.StatusCode}, ErrPageNotFound
+	}
 	content, _ := io.ReadAll(response.Body)
 	defer response.Body.Close()
 	return &Page{
