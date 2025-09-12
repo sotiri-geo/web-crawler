@@ -10,8 +10,8 @@ type URLFetcher struct {
 }
 
 type URLResponse struct {
-	Html       string
-	StatusCode int
+	HtmlContent string
+	StatusCode  int
 }
 
 func (u *URLFetcher) FetchURL(url string) (*URLResponse, error) {
@@ -27,7 +27,7 @@ func (u *URLFetcher) FetchURL(url string) (*URLResponse, error) {
 		return nil, fmt.Errorf("failed to ready body content: %v", err)
 	}
 	return &URLResponse{
-		Html:       string(body),
-		StatusCode: resp.StatusCode,
+		HtmlContent: string(body),
+		StatusCode:  resp.StatusCode,
 	}, nil
 }

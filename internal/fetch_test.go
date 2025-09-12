@@ -9,6 +9,7 @@ import (
 	"github.com/sotiri-geo/web-crawler/internal"
 )
 
+// Testing an interface
 type StubClient struct {
 	response      string
 	errorResponse error
@@ -22,25 +23,65 @@ func (c *StubClient) Get(url string) (*http.Response, error) {
 }
 
 func TestFetchUrl(t *testing.T) {
-	t.Run("fetches html", func(t *testing.T) {
-		wantHtml := "<html><body>Hello World</body></html>"
-		// Setup - basic server to return some canned response
-		stubClient := &StubClient{response: wantHtml}
-		urlFetcher := internal.URLFetcher{stubClient}
+	// Start by refactoring into table tests with setup
 
-		got, err := urlFetcher.FetchURL("www.example.com")
+	cases := []struct {
+		name              string
+		url               string
+		wantHtmlContent   string
+		wantErrorResponse error
+		wantStatusCode    int
+	}{
+		{
+			name:              "fetches html content",
+			url:               "www.example.com",
+			wantHtmlContent:   "<html><body>Hello World</body></html>",
+			wantErrorResponse: nil,
+			wantStatusCode:    http.StatusOK,
+		},
+	}
 
-		if err != nil {
-			t.Fatalf("failed to fetch url: %v", err)
+	for _, tt := range cases {
+		// setup
+		client := &StubClient{response: tt.wantHtmlContent}
+		urlFetcher := internal.URLFetcher{client}
+
+		// execute
+		got, err := urlFetcher.FetchURL(tt.url)
+
+		if tt.wantErrorResponse == nil {
+			assertNoErr(t, err)
 		}
+		assertStatusCode(t, got.StatusCode, tt.wantStatusCode)
+		assertHtmlContent(t, got.HtmlContent, tt.wantHtmlContent)
 
-		if got.StatusCode != http.StatusOK {
-			t.Fatalf("failed status code: got %d, want %d", got.StatusCode, http.StatusOK)
-		}
+	}
 
-		if got.Html != wantHtml {
-			t.Errorf("got %q, want %q", got.Html, wantHtml)
-		}
+	t.Run("returns empty string on error", func(t *testing.T) {})
 
-	})
+	t.Run("handles 404 response", func(t *testing.T) {})
+}
+
+func assertStatusCode(t testing.TB, got, want int) {
+	t.Helper()
+
+	if got != want {
+		t.Fatalf("failed status code: got %d, want %d", got, want)
+	}
+}
+
+func assertHtmlContent(t testing.TB, got, want string) {
+	t.Helper()
+
+	if got != want {
+		t.Errorf("html content: got %s, want %s", got, want)
+	}
+}
+
+func assertNoErr(t testing.TB, err error) {
+	t.Helper()
+
+	if err != nil {
+		t.Fatalf("should not error: %v", err)
+	}
 }
