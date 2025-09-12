@@ -28,7 +28,7 @@ func TestFetchURL(t *testing.T) {
 		url := "www.example.com"
 		want := "<html><body>Hello World</body></html>"
 		mockClient := &MockClient{content: want, statusCode: http.StatusOK}
-		urlFetch := requests.NewURLFetch(mockClient)
+		urlFetch := requests.NewURLFetch(mockClient, requests.URLValidator)
 
 		got, err := urlFetch.FetchURL(url)
 
@@ -49,7 +49,7 @@ func TestFetchURL(t *testing.T) {
 		url := "www.notfound.com"
 		want := ""
 		mockClient := &MockClient{content: want, statusCode: http.StatusNotFound}
-		urlFetch := requests.NewURLFetch(mockClient)
+		urlFetch := requests.NewURLFetch(mockClient, requests.URLValidator)
 
 		got, err := urlFetch.FetchURL(url)
 
@@ -61,7 +61,27 @@ func TestFetchURL(t *testing.T) {
 		if got.Content != want {
 			t.Errorf("incorrect html content found: got %q, want %q", got.Content, want)
 		}
+	})
 
+	t.Run("page not a valid url", func(t *testing.T) {
+		// setup
+		invalidUrl := ".hello"
+		mockClient := &MockClient{content: "", statusCode: http.StatusBadRequest}
+		urlFetch := requests.NewURLFetch(mockClient, requests.URLValidator)
+
+		got, err := urlFetch.FetchURL(invalidUrl)
+
+		if err == nil {
+			t.Fatal("should fail with invalid url")
+		}
+
+		if !errors.Is(err, requests.ErrInvalidURL) {
+			t.Errorf("incorrect error returned: got %v, want %v", err, requests.ErrInvalidURL)
+		}
+
+		if got.Content != "" {
+			t.Errorf("incorrect html content found: got %q, want %q", got.Content, "")
+		}
 	})
 }
 

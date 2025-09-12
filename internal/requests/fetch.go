@@ -7,7 +7,10 @@ import (
 	"regexp"
 )
 
-var ErrPageNotFound = errors.New("could not find page")
+var (
+	ErrPageNotFound = errors.New("could not find page")
+	ErrInvalidURL   = errors.New("invalid url requested")
+)
 
 // First build out a httpClient interface we can use as a dependency injection
 // should mimic the interface found on http.Client
@@ -16,7 +19,8 @@ type HTTPClient interface {
 }
 
 type URLFetch struct {
-	client HTTPClient // dep injection allows us to create contracts with real implementations in integration tests
+	client       HTTPClient // dep injection allows us to create contracts with real implementations in integration tests
+	urlValidator func(url string) bool
 }
 
 type Page struct {
@@ -25,6 +29,9 @@ type Page struct {
 }
 
 func (u *URLFetch) FetchURL(url string) (*Page, error) {
+	if !u.urlValidator(url) {
+		return &Page{Content: "", StatusCode: http.StatusBadRequest}, ErrInvalidURL
+	}
 	response, _ := u.client.Get(url)
 	if response.StatusCode == http.StatusNotFound {
 		return &Page{Content: "", StatusCode: response.StatusCode}, ErrPageNotFound
@@ -38,8 +45,8 @@ func (u *URLFetch) FetchURL(url string) (*Page, error) {
 }
 
 // Set constructors
-func NewURLFetch(client HTTPClient) *URLFetch {
-	return &URLFetch{client}
+func NewURLFetch(client HTTPClient, urlValidator func(url string) bool) *URLFetch {
+	return &URLFetch{client, urlValidator}
 }
 
 // Validator, separating this out from the FetchURL to decouple these two components
