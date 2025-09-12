@@ -30,8 +30,13 @@ func TestFetchUrl(t *testing.T) {
 
 		got := urlFetcher.FetchURL("www.example.com")
 
-		if got != wantHtml {
-			t.Errorf("got %q, want %q", got, wantHtml)
+		if got.StatusCode != http.StatusOK {
+			t.Fatalf("failed status code: got %d, want %d", got.StatusCode, http.StatusOK)
 		}
+
+		if got.Html != wantHtml {
+			t.Errorf("got %q, want %q", got.Html, wantHtml)
+		}
+
 	})
 }
