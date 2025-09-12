@@ -64,3 +64,24 @@ func TestFetchURL(t *testing.T) {
 
 	})
 }
+
+func TestURLValidator(t *testing.T) {
+	cases := []struct {
+		name string
+		url  string
+		want bool
+	}{
+		{name: "valid url with .com", url: "www.example.com", want: true},
+		{name: "valid url with .co.uk", url: "www.example.co.uk", want: true},
+		{name: "missing www.", url: "example.com", want: false},
+		{name: "missing domain", url: "www.example", want: false},
+	}
+
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			if isValid := requests.URLValidator(tt.url); isValid != tt.want {
+				t.Errorf("incorrectly marked %q as valid = %v", tt.url, isValid)
+			}
+		})
+	}
+}

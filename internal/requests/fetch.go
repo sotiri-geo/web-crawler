@@ -4,6 +4,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"regexp"
 )
 
 var ErrPageNotFound = errors.New("could not find page")
@@ -39,4 +40,11 @@ func (u *URLFetch) FetchURL(url string) (*Page, error) {
 // Set constructors
 func NewURLFetch(client HTTPClient) *URLFetch {
 	return &URLFetch{client}
+}
+
+// Validator, separating this out from the FetchURL to decouple these two components
+func URLValidator(url string) bool {
+	pattern := `^www\.[A-Za-z0-9]+\.(com|co\.uk)$`
+	matched, _ := regexp.MatchString(pattern, url)
+	return matched
 }
