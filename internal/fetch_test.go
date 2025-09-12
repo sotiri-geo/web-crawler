@@ -11,15 +11,19 @@ import (
 
 // Testing an interface
 type StubClient struct {
-	response      string
-	errorResponse error
+	contentResponse string
+	errorResponse   error
 }
 
 func (c *StubClient) Get(url string) (*http.Response, error) {
 	return &http.Response{
 		StatusCode: http.StatusOK,
-		Body:       io.NopCloser(strings.NewReader(c.response)),
+		Body:       io.NopCloser(strings.NewReader(c.contentResponse)),
 	}, nil
+}
+
+func NewStubClient(contentResponse string, errorResponse error) *StubClient {
+	return &StubClient{contentResponse, errorResponse}
 }
 
 func TestFetchUrl(t *testing.T) {
@@ -43,7 +47,7 @@ func TestFetchUrl(t *testing.T) {
 
 	for _, tt := range cases {
 		// setup
-		client := &StubClient{response: tt.wantHtmlContent}
+		client := NewStubClient(tt.wantHtmlContent, tt.wantErrorResponse)
 		urlFetcher := internal.URLFetcher{client}
 
 		// execute
@@ -52,12 +56,17 @@ func TestFetchUrl(t *testing.T) {
 		if tt.wantErrorResponse == nil {
 			assertNoErr(t, err)
 		}
+
+		// assert
 		assertStatusCode(t, got.StatusCode, tt.wantStatusCode)
-		assertHtmlContent(t, got.HtmlContent, tt.wantHtmlContent)
+		assertHtmlContent(t, got.Content, tt.wantHtmlContent)
+		assertURL(t, got.URL, tt.url)
 
 	}
 
-	t.Run("returns empty string on error", func(t *testing.T) {})
+	t.Run("returns empty string on error", func(t *testing.T) {
+
+	})
 
 	t.Run("handles 404 response", func(t *testing.T) {})
 }
@@ -83,5 +92,13 @@ func assertNoErr(t testing.TB, err error) {
 
 	if err != nil {
 		t.Fatalf("should not error: %v", err)
+	}
+}
+
+func assertURL(t testing.TB, got, want string) {
+	t.Helper()
+
+	if got != want {
+		t.Errorf("incorrect URL call: got %q, want %q", got, want)
 	}
 }

@@ -9,12 +9,14 @@ type URLFetcher struct {
 	Client HTTPClient
 }
 
-type URLResponse struct {
-	HtmlContent string
-	StatusCode  int
+type FetchResult struct {
+	URL        string
+	Content    string // html
+	StatusCode int
+	Error      error
 }
 
-func (u *URLFetcher) FetchURL(url string) (*URLResponse, error) {
+func (u *URLFetcher) FetchURL(url string) (*FetchResult, error) {
 	resp, err := u.Client.Get(url)
 
 	if err != nil {
@@ -26,8 +28,9 @@ func (u *URLFetcher) FetchURL(url string) (*URLResponse, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to ready body content: %v", err)
 	}
-	return &URLResponse{
-		HtmlContent: string(body),
-		StatusCode:  resp.StatusCode,
+	return &FetchResult{
+		URL:        url,
+		Content:    string(body),
+		StatusCode: resp.StatusCode,
 	}, nil
 }
