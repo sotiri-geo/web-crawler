@@ -48,7 +48,7 @@ func TestFetchUrl(t *testing.T) {
 	for _, tt := range cases {
 		// setup
 		client := NewStubClient(tt.wantHtmlContent, tt.wantErrorResponse)
-		urlFetcher := internal.URLFetcher{client}
+		urlFetcher := internal.NewURLFetcher(client)
 
 		// execute
 		got, err := urlFetcher.FetchURL(tt.url)

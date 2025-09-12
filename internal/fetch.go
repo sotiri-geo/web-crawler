@@ -34,3 +34,7 @@ func (u *URLFetcher) FetchURL(url string) (*FetchResult, error) {
 		StatusCode: resp.StatusCode,
 	}, nil
 }
+
+func NewURLFetcher(client HTTPClient) *URLFetcher {
+	return &URLFetcher{client}
+}
