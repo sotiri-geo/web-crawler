@@ -28,7 +28,11 @@ func TestFetchUrl(t *testing.T) {
 		stubClient := &StubClient{response: wantHtml}
 		urlFetcher := internal.URLFetcher{stubClient}
 
-		got := urlFetcher.FetchURL("www.example.com")
+		got, err := urlFetcher.FetchURL("www.example.com")
+
+		if err != nil {
+			t.Fatalf("failed to fetch url: %v", err)
+		}
 
 		if got.StatusCode != http.StatusOK {
 			t.Fatalf("failed status code: got %d, want %d", got.StatusCode, http.StatusOK)

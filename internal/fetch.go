@@ -1,6 +1,9 @@
 package internal
 
-import "io"
+import (
+	"fmt"
+	"io"
+)
 
 type URLFetcher struct {
 	Client HTTPClient
@@ -11,12 +14,20 @@ type URLResponse struct {
 	StatusCode int
 }
 
-func (u *URLFetcher) FetchURL(url string) *URLResponse {
-	resp, _ := u.Client.Get(url)
+func (u *URLFetcher) FetchURL(url string) (*URLResponse, error) {
+	resp, err := u.Client.Get(url)
 
-	body, _ := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("client failed to fetch url: %v", err)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to ready body content: %v", err)
+	}
 	return &URLResponse{
 		Html:       string(body),
 		StatusCode: resp.StatusCode,
-	}
+	}, nil
 }
