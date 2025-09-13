@@ -6,6 +6,7 @@ import (
 	"github.com/sotiri-geo/web-crawler/internal/requests"
 )
 
+// Worker func - runs in its own go routine
 func Worker(urlChannel chan string, resultChannel chan string, urlFetcher *requests.URLFetch) {
 	for url := range urlChannel {
 		// process url

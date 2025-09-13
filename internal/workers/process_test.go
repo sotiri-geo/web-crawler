@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/sotiri-geo/web-crawler/internal/requests"
 	"github.com/sotiri-geo/web-crawler/internal/workers"
@@ -13,6 +14,7 @@ import (
 
 type MockClient struct {
 	content string
+	delay   time.Duration
 }
 
 func (m *MockClient) Get(urlPage string) (*http.Response, error) {
@@ -53,7 +55,7 @@ func TestWorkerPool(t *testing.T) {
 		}
 	})
 
-	t.Run("processes single url from url channel", func(t *testing.T) {
+	t.Run("processes url from channel", func(t *testing.T) {
 		// setup: Single worker and url to validate process
 		urlChannel := make(chan string, 1)
 		resultChannel := make(chan string, 1)
@@ -61,7 +63,7 @@ func TestWorkerPool(t *testing.T) {
 		mockClient := &MockClient{content: "<html><body>Hello World</body></html>"}
 		urlFetcher := requests.NewURLFetch(mockClient, func(urlPage string) bool { return true })
 
-		// execute: background worker
+		// execute: background worker: it will process result and shuve html content into the resultChannel
 		go workers.Worker(urlChannel, resultChannel, urlFetcher)
 
 		// Send to channel a new url to be processed by worker
@@ -73,6 +75,64 @@ func TestWorkerPool(t *testing.T) {
 
 		if got != want {
 			t.Errorf("incorrect result fetched from channel: got content %q, want %q", got, want)
+		}
+	})
+
+	t.Run("process multiple urls by 2 background workers", func(t *testing.T) {
+		// setup
+		numWorkers := 2
+		urls := []string{
+			"http://www.example1.com",
+			"http://www.example2.com",
+			"http://www.example3.com",
+			"http://www.example4.com",
+		}
+
+		htmlContent := "<html><body>Hello World</body></html>"
+		wantResults := []string{
+			htmlContent,
+			htmlContent,
+			htmlContent,
+			htmlContent,
+		}
+
+		urlChannel := make(chan string, len(urls))
+		resultChannel := make(chan string, len(urls))
+
+		mockClient := &MockClient{content: htmlContent, delay: (time.Millisecond * 100)} // simulate network delays
+		urlFetcher := requests.NewURLFetch(mockClient, func(url string) bool { return true })
+
+		// execute: add urls to channel and create 2 workers
+		// Simulate work
+		go func() {
+			for _, url := range urls {
+				urlChannel <- url
+			}
+			close(urlChannel) // stop reading off channel after urls have been added
+		}()
+
+		// start workers
+		for i := 0; i < numWorkers; i++ {
+			go workers.Worker(urlChannel, resultChannel, urlFetcher)
+		}
+
+		var gotResults []string
+		start := time.Now()
+		for i := 0; i < len(urls); i++ {
+			// add to results slice from channel where workers dump results
+			gotResults = append(gotResults, <-resultChannel)
+		}
+
+		end := time.Now()
+		totalElapsedTime := end.Sub(start)
+
+		// Assert: verify concurrency by duration taken and validated results
+		if totalElapsedTime >= time.Millisecond*300 {
+			t.Errorf("took too long to run with simulated network delays: got %v and want under %v", totalElapsedTime, time.Millisecond*300)
+		}
+
+		if !slices.Equal(gotResults, wantResults) {
+			t.Errorf("incorrect content found: got %v, want %v", gotResults, wantResults)
 		}
 	})
 }
