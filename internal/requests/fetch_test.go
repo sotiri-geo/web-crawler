@@ -26,7 +26,7 @@ func (m *MockClient) Get(url string) (*http.Response, error) {
 
 func TestFetchURL(t *testing.T) {
 	t.Run("fetches html content from page", func(t *testing.T) {
-		url := "www.example.com"
+		url := "https://www.example.com"
 		want := "<html><body>Hello World</body></html>"
 		mockClient := &MockClient{content: want, statusCode: http.StatusOK}
 		urlFetch := requests.NewURLFetch(mockClient, requests.URLValidator)
@@ -47,7 +47,7 @@ func TestFetchURL(t *testing.T) {
 	})
 
 	t.Run("page not found returns 404 with empty content", func(t *testing.T) {
-		url := "www.notfound.com"
+		url := "https://www.notfound.com"
 		want := ""
 		mockClient := &MockClient{content: want, statusCode: http.StatusNotFound}
 		urlFetch := requests.NewURLFetch(mockClient, requests.URLValidator)
@@ -66,7 +66,7 @@ func TestFetchURL(t *testing.T) {
 
 	t.Run("page not a valid url", func(t *testing.T) {
 		// setup
-		invalidUrl := ".hello"
+		invalidUrl := "by"
 		mockClient := &MockClient{content: "", statusCode: http.StatusBadRequest}
 		urlFetch := requests.NewURLFetch(mockClient, requests.URLValidator)
 
@@ -86,7 +86,7 @@ func TestFetchURL(t *testing.T) {
 	})
 
 	t.Run("client fails to fetch url", func(t *testing.T) {
-		url := "www.jfsalfkd.com"
+		url := "https://www.cantfindme.com"
 		mockClient := &MockClient{content: "", getError: requests.ErrClientFetchURL}
 		urlFetch := requests.NewURLFetch(mockClient, requests.URLValidator)
 
@@ -97,6 +97,17 @@ func TestFetchURL(t *testing.T) {
 		}
 	})
 
+	t.Run("cannot read content from response", func(t *testing.T) {
+		url := "https://www.jfsalfkd.com"
+		mockClient := &MockClient{content: "", getError: requests.ErrClientFetchURL}
+		urlFetch := requests.NewURLFetch(mockClient, requests.URLValidator)
+
+		_, err := urlFetch.FetchURL(url)
+
+		if !errors.Is(err, requests.ErrClientFetchURL) {
+			t.Errorf("incorrect error: got %v, want %v", err, requests.ErrClientFetchURL)
+		}
+	})
 }
 
 func TestURLValidator(t *testing.T) {
@@ -105,10 +116,12 @@ func TestURLValidator(t *testing.T) {
 		url  string
 		want bool
 	}{
-		{name: "valid url with .com", url: "www.example.com", want: true},
-		{name: "valid url with .co.uk", url: "www.example.co.uk", want: true},
-		{name: "missing www.", url: "example.com", want: false},
+		{name: "valid url with .com", url: "https://www.example.com", want: true},
+		{name: "valid url with .co.uk", url: "https://www.example.co.uk", want: true},
+		{name: "missing scheme http/s", url: "www.example.com", want: false},
 		{name: "missing domain", url: "www.example", want: false},
+		{name: "incorrect url", url: "by", want: false},
+		{name: "empty url", url: "", want: false},
 	}
 
 	for _, tt := range cases {
