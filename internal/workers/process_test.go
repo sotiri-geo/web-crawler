@@ -100,8 +100,8 @@ func TestWorkerPool(t *testing.T) {
 		}
 		errorMargin := time.Millisecond * 200 / 10 // 10 % margin of err
 		wantTimeElapsed := time.Millisecond*200 + errorMargin
-		urlChannel := make(chan string, len(urls))
-		resultChannel := make(chan string, len(urls))
+		urlChannel := make(chan string, len(urls))    // buffered channel of size 4
+		resultChannel := make(chan string, len(urls)) // buffered channel of size 4
 
 		mockClient := &MockClient{content: htmlContent, delay: (time.Millisecond * 100)} // simulate network delays
 		urlFetcher := requests.NewURLFetch(mockClient, func(url string) bool { return true })
@@ -137,6 +137,42 @@ func TestWorkerPool(t *testing.T) {
 
 		if !slices.Equal(gotResults, wantResults) {
 			t.Errorf("incorrect content found: got %v, want %v", gotResults, wantResults)
+		}
+	})
+
+	t.Run("collect results from multiple workers", func(t *testing.T) {
+		// setup
+		numWorkers := 2
+		urls := []string{
+			"http://www.example1.com",
+			"http://www.example2.com",
+			"http://www.example3.com",
+			"http://www.example4.com",
+		}
+
+		htmlContent := "<html><body>Hello World</body></html>"
+		wantResults := []string{
+			htmlContent,
+			htmlContent,
+			htmlContent,
+			htmlContent,
+		}
+		errorMargin := time.Millisecond * 200 / 10 // 10 % margin of err
+		wantTimeElapsed := time.Millisecond*200 + errorMargin
+		mockClient := &MockClient{content: htmlContent, delay: (time.Millisecond * 100)} // simulate network delays
+		urlFetcher := requests.NewURLFetch(mockClient, func(url string) bool { return true })
+
+		// execute
+		start := time.Now()
+		results := workers.AggregateResults(urls, urlFetcher, numWorkers)
+		elapsed := time.Since(start)
+
+		if !slices.Equal(results, wantResults) {
+			t.Errorf("got %v, want %v", results, wantResults)
+		}
+
+		if elapsed >= wantTimeElapsed {
+			t.Errorf("took too long to execute concurrently: got %v, want less than %v", elapsed, wantTimeElapsed)
 		}
 	})
 }
