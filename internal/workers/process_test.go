@@ -18,6 +18,9 @@ type MockClient struct {
 }
 
 func (m *MockClient) Get(urlPage string) (*http.Response, error) {
+	if m.delay > 0 {
+		time.Sleep(m.delay)
+	}
 	return &http.Response{
 		StatusCode: http.StatusOK,
 		Body:       io.NopCloser(strings.NewReader(m.content)),
@@ -95,7 +98,8 @@ func TestWorkerPool(t *testing.T) {
 			htmlContent,
 			htmlContent,
 		}
-
+		errorMargin := time.Millisecond * 200 / 10 // 10 % margin of err
+		wantTimeElapsed := time.Millisecond*200 + errorMargin
 		urlChannel := make(chan string, len(urls))
 		resultChannel := make(chan string, len(urls))
 
@@ -125,9 +129,9 @@ func TestWorkerPool(t *testing.T) {
 
 		end := time.Now()
 		totalElapsedTime := end.Sub(start)
-
+		t.Logf("total time taken: %v", totalElapsedTime)
 		// Assert: verify concurrency by duration taken and validated results
-		if totalElapsedTime >= time.Millisecond*300 {
+		if totalElapsedTime >= wantTimeElapsed {
 			t.Errorf("took too long to run with simulated network delays: got %v and want under %v", totalElapsedTime, time.Millisecond*300)
 		}
 
