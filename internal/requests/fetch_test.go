@@ -14,13 +14,14 @@ import (
 type MockClient struct {
 	content    string // canned html content responses
 	statusCode int
+	getError   error
 }
 
 func (m *MockClient) Get(url string) (*http.Response, error) {
 	return &http.Response{
 		StatusCode: m.statusCode,
 		Body:       io.NopCloser(strings.NewReader(m.content)),
-	}, nil
+	}, m.getError
 }
 
 func TestFetchURL(t *testing.T) {
@@ -83,6 +84,19 @@ func TestFetchURL(t *testing.T) {
 			t.Errorf("incorrect html content found: got %q, want %q", got.Content, "")
 		}
 	})
+
+	t.Run("client fails to fetch url", func(t *testing.T) {
+		url := "www.jfsalfkd.com"
+		mockClient := &MockClient{content: "", getError: requests.ErrClientFetchURL}
+		urlFetch := requests.NewURLFetch(mockClient, requests.URLValidator)
+
+		_, err := urlFetch.FetchURL(url)
+
+		if !errors.Is(err, requests.ErrClientFetchURL) {
+			t.Errorf("incorrect error: got %v, want %v", err, requests.ErrClientFetchURL)
+		}
+	})
+
 }
 
 func TestURLValidator(t *testing.T) {

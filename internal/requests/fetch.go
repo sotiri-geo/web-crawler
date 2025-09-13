@@ -2,14 +2,17 @@ package requests
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"regexp"
 )
 
 var (
-	ErrPageNotFound = errors.New("could not find page")
-	ErrInvalidURL   = errors.New("invalid url requested")
+	ErrPageNotFound   = errors.New("could not find page")
+	ErrInvalidURL     = errors.New("invalid url requested")
+	ErrClientFetchURL = errors.New("client could not fetch url provided")
+	ErrReadContent    = errors.New("cannot read body content from response")
 )
 
 // First build out a httpClient interface we can use as a dependency injection
@@ -32,12 +35,19 @@ func (u *URLFetch) FetchURL(url string) (*Page, error) {
 	if !u.urlValidator(url) {
 		return &Page{Content: "", StatusCode: http.StatusBadRequest}, ErrInvalidURL
 	}
-	response, _ := u.client.Get(url)
+	response, err := u.client.Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch page %q: %w", url, ErrClientFetchURL)
+	}
+	defer response.Body.Close() // after successful resp
 	if response.StatusCode == http.StatusNotFound {
 		return &Page{Content: "", StatusCode: response.StatusCode}, ErrPageNotFound
 	}
-	content, _ := io.ReadAll(response.Body)
-	defer response.Body.Close()
+	content, err := io.ReadAll(response.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+
 	return &Page{
 		Content:    string(content),
 		StatusCode: response.StatusCode,
